@@ -22,23 +22,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-require "rubygems/package"
-require "fileutils"
-require "net/http"
-require "optparse"
-require "digest"
-require "open3"
-require "zlib"
-require "yaml"
-require "uri"
-require "zip"
+require 'rubygems/package'
+require 'fileutils'
+require 'net/http'
+require 'optparse'
+require 'digest'
+require 'open3'
+require 'zlib'
+require 'yaml'
+require 'uri'
+require 'zip'
 
-CACHE_DIR = ".deputy-cache"
-DEFAULT_CONFIG_FILE = ".dep.yaml"
+CACHE_DIR = '.deputy-cache'
+DEFAULT_CONFIG_FILE = '.dep.yaml'
 
 class Log
   def self.dep_start()
-    puts "deputy:"
+    puts 'deputy:'
   end
 
   def self.dep_fail(msg)
@@ -46,21 +46,21 @@ class Log
   end
 
   def self.dep_finalize()
-    puts "- action:"
-    puts "  finalize:"
-    puts "    steps:"
+    puts '- action:'
+    puts '  finalize:'
+    puts '    steps:'
   end
 
   def self.dep_check(msg)
-    puts "- action:"
+    puts '- action:'
     puts "  check: #{msg}"
   end
 
   def self.dep_build(msg)
-    puts "- action:"
-    puts "  build:"
+    puts '- action:'
+    puts '  build:'
     puts "    dependency: #{msg}"
-    puts "    steps:"
+    puts '    steps:'
   end
 
   def self.dep_build_step(msg)
@@ -70,17 +70,17 @@ class Log
   def self.dep_build_step_out(kind, msg)
     puts "      #{kind}: |-"
     msg = msg.to_s.strip.split("\n").join("\n        ")
-    puts "        " + msg
+    puts '        ' + msg
   end
 
   def self.dep_create(msg)
-    puts "- action:"
+    puts '- action:'
     puts "  create: #{msg}"
   end
 
   def self.dep_pull(from, to)
-    puts "- action:"
-    puts "  pull:"
+    puts '- action:'
+    puts '  pull:'
     puts "    from: #{from}"
     puts "    to: #{to}"
   end
@@ -89,7 +89,7 @@ class Log
     return unless err
 
     err = err.strip
-    return if err == ""
+    return if err == ''
 
     puts "    err  : #{err}"
   end
@@ -108,7 +108,7 @@ class Repository
     @finalize = []
 
     finalize.to_a.each do |step|
-      @finalize << BuildStep.new(".", step)
+      @finalize << BuildStep.new('.', step)
     end
   end
 
@@ -137,14 +137,14 @@ end
 class BuildCmd
   def initialize(cfg_dir, hash)
     @cmd = []
-    @cmd << hash["cmd"].to_s.strip
-    hash["args"].to_a.each { |arg| @cmd << arg.to_s.strip }
+    @cmd << hash['cmd'].to_s.strip
+    hash['args'].to_a.each { |arg| @cmd << arg.to_s.strip }
     @echo_stdout = false
     @echo_stderr = false
-    echo = hash["echo-always"]
+    echo = hash['echo-always']
     if echo && echo.class == Hash
-      @echo_stdout = echo["stdout"] == true
-      @echo_stderr = echo["stderr"] == true
+      @echo_stdout = echo['stdout'] == true
+      @echo_stderr = echo['stderr'] == true
     end
   end
 
@@ -155,15 +155,15 @@ class BuildCmd
       out, err, status = Open3.capture3(*@cmd)
 
       if !status.success?
-        Log.dep_build_step_out("stdout", out) unless out.to_s.strip == ""
-        Log.dep_build_step_out("stderr", err) unless err.to_s.strip == ""
+        Log.dep_build_step_out('stdout', out) unless out.to_s.strip == ''
+        Log.dep_build_step_out('stderr', err) unless err.to_s.strip == ''
         return false
       end
 
-      Log.dep_build_step_out("stdout", out) if @echo_stdout
-      Log.dep_build_step_out("stderr", err) if @echo_stderr
+      Log.dep_build_step_out('stdout', out) if @echo_stdout
+      Log.dep_build_step_out('stderr', err) if @echo_stderr
     rescue StandardError => e
-      Log.dep_build_step_out("exception", e.to_s)
+      Log.dep_build_step_out('exception', e.to_s)
       return false
     end
 
@@ -173,9 +173,9 @@ end
 
 class BuildStep
   def initialize(cfg_dir, hash)
-    @step = hash["step"].to_s.strip
-    @descr = hash["descr"].to_s.strip
-    exec = hash["exec"]
+    @step = hash['step'].to_s.strip
+    @descr = hash['descr'].to_s.strip
+    exec = hash['exec']
     @exec = BuildCmd.new(cfg_dir, exec) if exec
   end
 
@@ -191,14 +191,14 @@ class Dependency
   attr_accessor :name, :descr, :type, :uri, :path, :ref, :dst
 
   def self.from_h(cfg_dir, hash)
-    case hash["type"]
-    when "bin"
+    case hash['type']
+    when 'bin'
       return BinDependency.new(cfg_dir, hash)
-    when "git"
+    when 'git'
       return GitDependency.new(cfg_dir, hash)
-    when "zip"
+    when 'zip'
       return ZipDependency.new(cfg_dir, hash)
-    when "tgz"
+    when 'tgz'
       return TgzDependency.new(cfg_dir, hash)
     else
       return self.new(cfg_dir, hash)
@@ -206,15 +206,15 @@ class Dependency
   end
 
   def initialize(cfg_dir, hash)
-    @name = hash["name"].to_s.strip
-    @descr = hash["descr"].to_s
-    @type = hash["type"].to_s.strip
-    @uri = hash["uri"].to_s.strip
-    @ref = hash["ref"]
-    @dst = hash["dst"].to_s.strip
-    @rec = hash["recurse"].to_s.strip == "true"
+    @name = hash['name'].to_s.strip
+    @descr = hash['descr'].to_s
+    @type = hash['type'].to_s.strip
+    @uri = hash['uri'].to_s.strip
+    @ref = hash['ref']
+    @dst = hash['dst'].to_s.strip
+    @rec = hash['recurse'].to_s.strip == 'true'
     @build = []
-    hash["build"].to_a.each { |step| @build << BuildStep.new(cfg_dir, step) }
+    hash['build'].to_a.each { |step| @build << BuildStep.new(cfg_dir, step) }
     @cfg_dir = cfg_dir.to_s.strip
     @cache_dir = File.join(@cfg_dir, CACHE_DIR)
     @path = nil
@@ -239,19 +239,19 @@ class Dependency
 
     case @ref
     when /\Amd5:\/\//
-      ref = @ref.sub("md5://", "").strip
+      ref = @ref.sub('md5://', '').strip
       md5 = md5sum(file_path).to_s.strip
       return ref == md5
     when /\Asha1:\/\//
-      ref = @ref.sub("sha1://", "").strip
+      ref = @ref.sub('sha1://', '').strip
       sha1 = sha1sum(file_path).to_s.strip
       return ref == sha1
     when /\Asha256:\/\//
-      ref = @ref.sub("sha256://", "").strip
+      ref = @ref.sub('sha256://', '').strip
       sha256 = sha256sum(file_path).to_s.strip
       return ref == sha256
     when /\Asha512:\/\//
-      ref = @ref.sub("sha512://", "").strip
+      ref = @ref.sub('sha512://', '').strip
       sha512 = sha512sum(file_path).to_s.strip
       return ref == sha512
     else
@@ -261,14 +261,14 @@ class Dependency
 
   def file_hash(hash_algo, file_path)
     path = File.join(Dir.pwd, file_path)
-    File.open(path, "rb") do |file|
+    File.open(path, 'rb') do |file|
       while chunk = file.read(4096)
         hash_algo.update(chunk)
       end
     end
     hash_algo.hexdigest
   rescue StandardError => e
-    ""
+    ''
   end
 
   def md5sum(file_path)
@@ -308,14 +308,14 @@ class Dependency
     http.use_ssl = ssl
 
     http.request_get(uri.request_uri) do |response|
-      if response.code == "302"
-        new_location = response["location"]
+      if response.code == '302'
+        new_location = response['location']
         return download_file(new_location, destination, ssl)
-      elsif response.code != "200"
+      elsif response.code != '200'
         return false
       end
 
-      File.open(destination, "wb") do |file|
+      File.open(destination, 'wb') do |file|
         response.read_body do |chunk|
           file.write(chunk)
         end
@@ -329,7 +329,7 @@ class Dependency
   end
 
   def fetch(ext = nil, &block)
-    ext = "." + ext.to_s if ext
+    ext = '.' + ext.to_s if ext
     ext = ext.to_s
 
     filename = "#{Digest::MD5.hexdigest(@uri)}#{ext}"
@@ -341,7 +341,7 @@ class Dependency
     when /\Ahttp:\/\//
       return false unless download_file(@uri, cache, false)
     when /\Afile:\/\//
-      file = @uri.sub("file://", "")
+      file = @uri.sub('file://', '')
       return false unless copy_file(file, cache)
     else
       return false
@@ -352,7 +352,7 @@ class Dependency
   end
 
   def create_dir(dir, clean = true, &block)
-    path = if dir.start_with?("/")
+    path = if dir.start_with?('/')
         dir
       else
         File.join(@cfg_dir, dir).to_s
@@ -374,10 +374,10 @@ class Dependency
   def build
     return true if @build.empty?
 
-    dir = if @dst.start_with?("dir://")
-        @dst.sub("dir://", "")
+    dir = if @dst.start_with?('dir://')
+        @dst.sub('dir://', '')
       else
-        "."
+        '.'
       end
 
     Dir.chdir(dir) do
@@ -390,12 +390,12 @@ end
 
 class BinDependency < Dependency
   def initialize(cfg_dir, hash)
-    hash["recurse"] = false
+    hash['recurse'] = false
     super(cfg_dir, hash)
   end
 
   def check_path?(cmd)
-    path_dirs = ENV["PATH"].split(File::PATH_SEPARATOR)
+    path_dirs = ENV['PATH'].split(File::PATH_SEPARATOR)
 
     path_dirs.each do |dir|
       cmd_path = File.join(dir, cmd)
@@ -408,7 +408,7 @@ class BinDependency < Dependency
   end
 
   def check_file?(file)
-    path = if file.start_with?("/")
+    path = if file.start_with?('/')
         file
       else
         File.join(@cfg_dir, file).to_s
@@ -425,10 +425,10 @@ class BinDependency < Dependency
     Log.dep_check(@name)
     case @uri
     when /\Apath:\/\//
-      cmd = @uri.sub("path://", "")
+      cmd = @uri.sub('path://', '')
       return check_path?(cmd)
     when /\Afile:\/\//
-      file = @uri.sub("file://", "")
+      file = @uri.sub('file://', '')
       return check_file?(file)
     else
       puts "URI has no recognized prefix: <#{@uri}>"
@@ -443,21 +443,21 @@ class GitDependency < Dependency
 
     @git_dep = BinDependency.new(
       cfg_dir,
-      "name" => "deputy: git",
-      "descr" => "Needed for git dependencies",
-      "type" => "bin",
-      "uri" => "path://git",
+      'name' => 'deputy: git',
+      'descr' => 'Needed for git dependencies',
+      'type' => 'bin',
+      'uri' => 'path://git',
     )
 
     @do_clone = false
   end
 
   def already_cloned?(path)
-    git_folder = File.join(path, ".git")
+    git_folder = File.join(path, '.git')
     return false unless File.directory?(git_folder)
 
     Dir.chdir(path) do
-      out, err, status = Open3.capture3("git", "remote", "-v")
+      out, err, status = Open3.capture3('git', 'remote', '-v')
       return false unless status.success?
       return true if out.include?(@uri)
     end
@@ -470,13 +470,13 @@ class GitDependency < Dependency
 
     case @ref
     when /\Acommit:\/\//
-      ref = @ref.sub("commit://", "")
+      ref = @ref.sub('commit://', '')
       return reset(ref)
     when /\Abranch:\/\//
-      ref = @ref.sub("branch://", "")
+      ref = @ref.sub('branch://', '')
       return reset(ref)
     when /\Atag:\/\//
-      ref = @ref.sub("tag://", "")
+      ref = @ref.sub('tag://', '')
       return reset(ref)
     else
       return reset(ref)
@@ -489,7 +489,7 @@ class GitDependency < Dependency
     return false unless @clone_dir
 
     Dir.chdir(@clone_dir) do
-      out, err, status = Open3.capture3("git", "reset", "--hard", "#{ref}")
+      out, err, status = Open3.capture3('git', 'reset', '--hard', "#{ref}")
       Log.dep_pull_err(err)
       return false unless status.success?
     end
@@ -501,7 +501,7 @@ class GitDependency < Dependency
     return true unless @do_clone
 
     Log.dep_pull(@uri, @clone_dir)
-    out, err, status = Open3.capture3("git", "clone", "--quiet", "#{@uri}", "#{@clone_dir}")
+    out, err, status = Open3.capture3('git', 'clone', '--quiet', "#{@uri}", "#{@clone_dir}")
     Log.dep_pull_err(err)
     return status.success?
   end
@@ -509,7 +509,7 @@ class GitDependency < Dependency
   def prepare_dst
     case @dst
     when /\Adir:\/\//
-      dir = @dst.sub("dir://", "")
+      dir = @dst.sub('dir://', '')
       res = create_dir(dir) do |path|
         already_cloned?(path)
       end
@@ -549,7 +549,7 @@ class ZipDependency < Dependency
         prefix = nil
         zip_file.each do |entry|
           prefix = entry.name unless prefix
-          prefix = "" unless entry.name.start_with? prefix
+          prefix = '' unless entry.name.start_with? prefix
         end
 
         zip_file.each do |entry|
@@ -570,7 +570,7 @@ class ZipDependency < Dependency
 
     case @dst
     when /\Adir:\/\//
-      @out_dir = @dst.sub("dir://", "")
+      @out_dir = @dst.sub('dir://', '')
       create_dir(@out_dir)
       return true
     end
@@ -579,7 +579,7 @@ class ZipDependency < Dependency
   end
 
   def fetch_zip
-    fetch("zip") do |cached|
+    fetch('zip') do |cached|
       return unzip(cached, @out_dir)
     end
     false
@@ -603,25 +603,25 @@ class TgzDependency < Dependency
   def untgz(tar_gz_file_path, destination_path)
     begin
       prefix = nil
-      File.open(tar_gz_file_path, "rb") do |file|
+      File.open(tar_gz_file_path, 'rb') do |file|
         Zlib::GzipReader.wrap(file) do |gz|
           Gem::Package::TarReader.new(gz) do |tar|
             files = []
             tar.each do |entry|
-              next if entry.full_name == "pax_global_header"
+              next if entry.full_name == 'pax_global_header'
 
               prefix = entry.full_name unless prefix
-              prefix = "" unless entry.full_name.start_with? prefix
+              prefix = '' unless entry.full_name.start_with? prefix
             end
           end
         end
       end
 
-      File.open(tar_gz_file_path, "rb") do |file|
+      File.open(tar_gz_file_path, 'rb') do |file|
         Zlib::GzipReader.wrap(file) do |gz|
           Gem::Package::TarReader.new(gz) do |tar|
             tar.each do |entry|
-              next if entry.full_name == "pax_global_header"
+              next if entry.full_name == 'pax_global_header'
 
               name = entry.full_name.delete_prefix(prefix)
               entry_destination = File.join(destination_path, name)
@@ -629,7 +629,7 @@ class TgzDependency < Dependency
                 FileUtils.mkdir_p(entry_destination)
               else
                 FileUtils.mkdir_p(File.dirname(entry_destination))
-                File.open(entry_destination, "wb") do |f|
+                File.open(entry_destination, 'wb') do |f|
                   f.write(entry.read)
                 end
               end
@@ -648,7 +648,7 @@ class TgzDependency < Dependency
 
     case @dst
     when /\Adir:\/\//
-      @out_dir = @dst.sub("dir://", "")
+      @out_dir = @dst.sub('dir://', '')
       create_dir(@out_dir)
       return true
     end
@@ -657,7 +657,7 @@ class TgzDependency < Dependency
   end
 
   def fetch_tgz
-    fetch("tar.gz") do |cached|
+    fetch('tar.gz') do |cached|
       return untgz(cached, @out_dir)
     end
     false
@@ -689,23 +689,23 @@ class Deputy
   end
 
   def parse
-    raise "deputy: no config data" unless @config_data
+    raise 'deputy: no config data' unless @config_data
 
-    repo = @config_data["repo"]
+    repo = @config_data['repo']
     raise "deputy: missing <repo> key in <#{@config_path}>" unless repo
 
-    meta_data = repo["meta"]
+    meta_data = repo['meta']
     raise "deputy: missing <repo: meta> key in <#{@config_path}>" unless meta_data
 
-    deps_data = repo["deps"]
+    deps_data = repo['deps']
     raise "deputy: missing <repo: deps> key in <#{@config_path}>" unless deps_data
 
-    meta = Meta.new(meta_data["name"], meta_data["descr"], meta_data["tags"])
+    meta = Meta.new(meta_data['name'], meta_data['descr'], meta_data['tags'])
     deps = deps_data.map do |dep_data|
       Dependency.from_h(@project_dir, dep_data)
     end
 
-    finalize = repo["finalize"]
+    finalize = repo['finalize']
     @repo = Repository.new(meta, deps, finalize)
     self
   end
@@ -746,11 +746,11 @@ options = {}
 opt_parser = OptionParser.new do |opts|
   opts.banner = "Usage: #{File.basename($PROGRAM_NAME)} [options]"
 
-  opts.on("-C", "--chdir DIR", "Specify directory") do |dir|
+  opts.on('-C', '--chdir DIR', 'Specify directory') do |dir|
     options[:dir] = dir
   end
 
-  opts.on("-h", "--help", "Display this help message") do
+  opts.on('-h', '--help', 'Display this help message') do
     puts opts
     exit
   end

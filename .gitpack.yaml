@@ -1,0 +1,9 @@
+---
+gitpack:
+  name: deputy
+  category: bin
+  files:
+  - "{{prefix}}/bin/deputy"
+  add:
+  - sh:
+    - sudo make install

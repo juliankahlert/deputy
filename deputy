@@ -200,6 +200,8 @@ class Dependency
       return ZipDependency.new(cfg_dir, hash)
     when 'tgz'
       return TgzDependency.new(cfg_dir, hash)
+    when 'gitpack'
+      return GitPackDependency.new(cfg_dir, hash)
     else
       return self.new(cfg_dir, hash)
     end
@@ -430,6 +432,74 @@ class BinDependency < Dependency
     when /\Afile:\/\//
       file = @uri.sub('file://', '')
       return check_file?(file)
+    else
+      puts "URI has no recognized prefix: <#{@uri}>"
+      return false
+    end
+  end
+end
+
+class GitPackDependency < Dependency
+  def initialize(cfg_dir, hash)
+    hash['recurse'] = false
+    super(cfg_dir, hash)
+
+    @gitpack_dep = BinDependency.new(
+      cfg_dir,
+      'name' => 'deputy: gitpack',
+      'descr' => 'Needed for gitpack dependencies',
+      'type' => 'bin',
+      'uri' => 'path://gitpack',
+    )
+  end
+
+  def gitpack_add
+    return false unless @ref
+
+    _out, _err, status = Open3.capture3('gitpack', 'add', @ref)
+    status.success?
+  end
+
+  def check_path?(cmd)
+    path_dirs = ENV['PATH'].split(File::PATH_SEPARATOR)
+
+    path_dirs.each do |dir|
+      cmd_path = File.join(dir, cmd)
+      @path = cmd_path
+      return true if File.executable?(cmd_path)
+    end
+    return true if gitpack_add
+
+    @path = nil
+    false
+  end
+
+  def check_file?(file)
+    path = if file.start_with?('/')
+        file
+      else
+        File.join(@cfg_dir, file).to_s
+      end
+
+    @path = path
+    return true if File.exists?(path)
+    return true if gitpack_add
+
+    @path = nil
+    false
+  end
+
+  def check?
+    Log.dep_check(@name)
+    return false unless @gitpack_dep.check?
+
+    case @uri
+    when /\Apath:\/\//
+      cmd = @uri.sub('path://', '')
+      return check_path?(cmd)
+    when /\Afile:\/\//
+      cmd = @uri.sub('file://', '')
+      return check_file?(cmd)
     else
       puts "URI has no recognized prefix: <#{@uri}>"
       return false
